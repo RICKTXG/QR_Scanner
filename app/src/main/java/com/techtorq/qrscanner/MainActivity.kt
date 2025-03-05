@@ -1,14 +1,16 @@
 package com.techtorq.qrscanner
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
+import android.util.Patterns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.DisplayContext
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,17 +35,22 @@ import com.techtorq.qrscanner.ui.theme.QRScannerTheme
 class MainActivity : ComponentActivity() {
     private var textResult = mutableStateOf("")
 
-    private var barCodeLauncher = registerForActivityResult(ScanContract()){
-        result ->
-        if (result.contents == null){
+    private var barCodeLauncher = registerForActivityResult(ScanContract()) { result ->
+        if (result.contents == null) {
             Toast.makeText(this@MainActivity, "Cancelled", Toast.LENGTH_SHORT).show()
-        }
-        else {
+        } else {
             textResult.value = result.contents
+
+            // Check if the result is a valid URL
+            if (Patterns.WEB_URL.matcher(result.contents).matches()) {
+                // Open the URL automatically
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(result.contents))
+                startActivity(intent)
+            }
         }
     }
 
-    private fun showCamera(){
+    private fun showCamera() {
         val options = ScanOptions()
         options.setDesiredBarcodeFormats(ScanOptions.QR_CODE)
         options.setPrompt("Scan a QR code")
@@ -52,15 +59,12 @@ class MainActivity : ComponentActivity() {
         options.setOrientationLocked(false)
 
         barCodeLauncher.launch(options)
-
-
     }
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ){
-        isGranted ->
-        if (isGranted){
+    ) { isGranted ->
+        if (isGranted) {
             showCamera()
         }
     }
@@ -86,11 +90,11 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-                ) {innerpadding ->
+                ) { innerPadding ->
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(innerpadding),
+                            .padding(innerPadding),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -99,10 +103,11 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.size(100.dp),
                             contentDescription = "QR"
                         )
-                        Text(text = textResult.value,
+                        Text(
+                            text = textResult.value,
                             fontSize = 30.sp,
-                            fontWeight = FontWeight.Bold)
-
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
@@ -112,15 +117,15 @@ class MainActivity : ComponentActivity() {
     private fun checkCameraPermission(context: Context) {
         if (ContextCompat.checkSelfPermission(
                 context,
-            android.Manifest.permission.CAMERA
-        ) == PackageManager.PERMISSION_GRANTED){
+                android.Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
             showCamera()
-        }
-        else if (shouldShowRequestPermissionRationale(android.Manifest.permission.CAMERA)){
+        } else if (shouldShowRequestPermissionRationale(android.Manifest.permission.CAMERA)) {
             Toast.makeText(this@MainActivity, "Camera required", Toast.LENGTH_SHORT).show()
-        }
-        else {
+        } else {
             requestPermissionLauncher.launch(android.Manifest.permission.CAMERA)
         }
     }
 }
+
